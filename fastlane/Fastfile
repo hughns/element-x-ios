@@ -72,7 +72,9 @@ lane :adhoc do
 end
 
 lane :tests do
-  run_tests()
+  run_tests(
+    scheme: "ElementX"
+  )
 
   slather(
     cobertura_xml: true,
@@ -80,7 +82,12 @@ lane :tests do
     proj: "ElementX.xcodeproj",
     scheme: "ElementX",
   )
+end
 
+lane :integration_tests do
+  run_tests(
+    scheme: "IntegrationTests"
+  )
 end
 
 private_lane :config_xcodegen_alpha do
