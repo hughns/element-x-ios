@@ -11,7 +11,7 @@
 				<key>com.apple.dt.XCTMetric_ApplicationLaunch-AppLaunch.duration</key>
 				<dict>
 					<key>baselineAverage</key>
-					<real>1.2</real>
+					<real>0.5</real>
 					<key>baselineIntegrationDisplayName</key>
 					<string>Local Baseline</string>
 				</dict>
@@ -24,7 +24,7 @@
 				<key>com.apple.dt.XCTMetric_Clock.time.monotonic</key>
 				<dict>
 					<key>baselineAverage</key>
-					<real>20</real>
+					<integer>10</integer>
 					<key>baselineIntegrationDisplayName</key>
 					<string>Local Baseline</string>
 				</dict>

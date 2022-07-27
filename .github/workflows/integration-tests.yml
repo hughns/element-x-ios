@@ -1,17 +1,17 @@
-name: Run integration tests
+name: Integration tests
 
 on:
   pull_request:
   workflow_dispatch:
 
 jobs:
-  tests:
+  integration_tests:
     name: Integration Tests
     runs-on: macos-12
 
     concurrency:
       # Only allow a single run of this workflow on each branch, automatically cancelling older runs.
-      group: alpha-${{ github.head_ref }}
+      group: integration-tests-${{ github.head_ref }}
       cancel-in-progress: true
 
     steps:
