@@ -35,3 +35,9 @@ jobs:
           INTEGRATION_TESTS_HOST: ${{ secrets.INTEGRATION_TESTS_HOST }}
           INTEGRATION_TESTS_USERNAME: ${{ secrets.INTEGRATION_TESTS_USERNAME }}
           INTEGRATION_TESTS_PASSWORD: ${{ secrets.INTEGRATION_TESTS_PASSWORD }}
+
+      - name: Archive project file
+        uses: actions/upload-artifact@v3
+        with:
+          name: xcode-project
+          path: ElementX.xcodeproj
