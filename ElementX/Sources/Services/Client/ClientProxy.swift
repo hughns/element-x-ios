@@ -23,20 +23,15 @@ private class WeakClientProxyWrapper: ClientDelegate {
     }
 }
 
-class ClientProxy: ClientProxyProtocol, SlidingSyncDelegate, SlidingSyncViewRoomsCountDelegate, SlidingSyncViewRoomsListDelegate, SlidingSyncViewStateDelegate {
+class ClientProxy: ClientProxyProtocol, SlidingSyncDelegate {
     private let client: Client
     private let backgroundTaskService: BackgroundTaskServiceProtocol
+    private let slidingSync: SlidingSync
     private var sessionVerificationControllerProxy: SessionVerificationControllerProxy?
     
-    private let slidingSync: SlidingSync
+    private var slidingSyncObserver: StoppableSpawn?
     private let slidingSyncView: SlidingSyncView
-    
-    private(set) var rooms: [RoomProxy] = [] {
-        didSet {
-            callbacks.send(.updatedRoomsList)
-        }
-    }
-    
+        
     deinit {
         client.setDelegate(delegate: nil)
     }
@@ -49,35 +44,31 @@ class ClientProxy: ClientProxyProtocol, SlidingSyncDelegate, SlidingSyncViewRoom
         self.backgroundTaskService = backgroundTaskService
         
         do {
-            let slidingSyncBuilder = try client.slidingSync().homeserver(url: "https://slidingsync.lab.element.dev")
-            
             slidingSyncView = try SlidingSyncViewBuilder()
                 .name(name: "HomeScreen")
-//                .sort(sort: ["by_recency"])
+                .sort(sort: ["by_recency", "by_name"])
+                .batchSize(size: 20)
                 .syncMode(mode: .fullSync)
                 .build()
             
-            slidingSync = try slidingSyncBuilder
+            slidingSync = try client.slidingSync()
+                .homeserver(url: "https://slidingsync.lab.element.dev")
                 .addView(view: slidingSyncView)
                 .build()
             
-            slidingSyncView.onRoomsCountUpdate(update: self)
-            slidingSyncView.onRoomsUpdate(update: self)
-            slidingSyncView.onStateUpdate(update: self)
-            
             slidingSync.onUpdate(update: self)
-            slidingSync.startSync()
-            
+            slidingSyncObserver = slidingSync.sync()
         } catch {
             fatalError("Failed configuring sliding sync")
         }
         
         client.setDelegate(delegate: WeakClientProxyWrapper(clientProxy: self))
-        
         Benchmark.startTrackingForIdentifier("ClientSync", message: "Started sync.")
-//        client.startSync()
-        
-        Task { await updateRooms() }
+        client.startSync()
+    }
+    
+    var homeScreenView: SlidingSyncViewProtocol {
+        slidingSyncView
     }
     
     var userIdentifier: String {
@@ -87,6 +78,30 @@ class ClientProxy: ClientProxyProtocol, SlidingSyncDelegate, SlidingSyncViewRoom
             MXLog.error("Failed retrieving room info with error: \(error)")
             return "Unknown user identifier"
         }
+    }
+    
+//    func subscribeToRoomChanges(_ roomIdentifier: String) {
+//        slidingSync.subscribe(roomId: roomIdentifier, settings: nil)
+//    }
+    
+    func roomForIdentifier(_ identifier: String) -> Result<SlidingSyncRoomProtocol, ClientProxyError> {
+        guard let room = try? slidingSync.getRoom(roomId: identifier) else {
+            return .failure(.failedRetrievingRoom)
+        }
+        
+        return .success(room)
+    }
+    
+    func roomProxyForIdentifier(_ identifier: String) async -> Result<RoomProxyProtocol, ClientProxyError> {
+        await Task.detached { () -> Result<RoomProxyProtocol, ClientProxyError> in
+            do {
+                let room = try self.client.getRoom(roomId: identifier)
+                return .success(RoomProxy(room: room, roomMessageFactory: RoomMessageFactory(), backgroundTaskService: self.backgroundTaskService))
+            } catch {
+                return .failure(.failedRetrievingRoom)
+            }
+        }
+        .value
     }
     
     func loadUserDisplayName() async -> Result<String, ClientProxyError> {
@@ -134,69 +149,17 @@ class ClientProxy: ClientProxyProtocol, SlidingSyncDelegate, SlidingSyncViewRoom
         .value
     }
     
-    // MARK: - SlidingSyncViewStateDelegate
-    
-    func didReceiveUpdate(newState: SlidingSyncState) {
-        MXLog.debug("Received sliding sync view state update: \(newState)")
-    }
-    
-    // MARK: - SlidingSyncViewRoomsListDelegate
-    
-    func didReceiveUpdate(diff: SlidingSyncViewRoomsListDiff) {
-        MXLog.debug("Received sliding sync view room list diff: \(diff)")
-        slidingSyncView.currentRoomsList()
-    }
-    
-    // MARK: - SlidingSyncViewRoomsCountDelegate
-    
-    func didReceiveUpdate(count: UInt32) {
-        MXLog.debug("Received sliding sync view count update: \(count)")
-    }
-    
     // MARK: - SlidingSyncDelegate
     
     func didReceiveSyncUpdate(summary: UpdateSummary) {
         MXLog.debug("Received sliding sync update: \(summary)")
     }
-    
+        
     // MARK: - Private
     
     fileprivate func didReceiveSyncUpdate() {
         Benchmark.logElapsedDurationForIdentifier("ClientSync", message: "Received sync update")
         
         callbacks.send(.receivedSyncUpdate)
-        
-        Task.detached {
-            await self.updateRooms()
-        }
-    }
-    
-    private func updateRooms() async {
-        var currentRooms = rooms
-        Benchmark.startTrackingForIdentifier("ClientRooms", message: "Fetching available rooms")
-        let sdkRooms = client.rooms()
-        Benchmark.endTrackingForIdentifier("ClientRooms", message: "Retrieved \(sdkRooms.count) rooms")
-        
-        Benchmark.startTrackingForIdentifier("ProcessingRooms", message: "Started processing \(sdkRooms.count) rooms")
-        let diff = sdkRooms.map { $0.id() }.difference(from: currentRooms.map(\.id))
-        
-        for change in diff {
-            switch change {
-            case .insert(_, let id, _):
-                guard let sdkRoom = sdkRooms.first(where: { $0.id() == id }) else {
-                    MXLog.error("Failed retrieving sdk room with id: \(id)")
-                    break
-                }
-                currentRooms.append(RoomProxy(room: sdkRoom,
-                                              roomMessageFactory: RoomMessageFactory(),
-                                              backgroundTaskService: backgroundTaskService))
-            case .remove(_, let id, _):
-                currentRooms.removeAll { $0.id == id }
-            }
-        }
-        
-        Benchmark.endTrackingForIdentifier("ProcessingRooms", message: "Finished processing \(sdkRooms.count) rooms")
-        
-        rooms = currentRooms
     }
 }

@@ -53,7 +53,8 @@ final class HomeScreenCoordinator: Coordinator, Presentable {
     init(parameters: HomeScreenCoordinatorParameters) {
         self.parameters = parameters
         
-        viewModel = HomeScreenViewModel(attributedStringBuilder: parameters.attributedStringBuilder)
+        viewModel = HomeScreenViewModel(clientProxy: parameters.userSession.clientProxy,
+                                        attributedStringBuilder: parameters.attributedStringBuilder)
         
         let view = HomeScreen(context: viewModel.context)
         hostingController = UIHostingController(rootView: view)
@@ -71,15 +72,6 @@ final class HomeScreenCoordinator: Coordinator, Presentable {
             }
         }
         
-        parameters.userSession.clientProxy
-            .callbacks
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] callback in
-                if case .updatedRoomsList = callback {
-                    self?.updateRoomsList()
-                }
-            }.store(in: &cancellables)
-        
         parameters.userSession.callbacks
             .receive(on: DispatchQueue.main)
             .sink { [weak self] callback in
@@ -90,8 +82,6 @@ final class HomeScreenCoordinator: Coordinator, Presentable {
                     self?.viewModel.hideSessionVerificationBanner()
                 }
             }.store(in: &cancellables)
-        
-        updateRoomsList()
         
         Task {
             if case let .success(userAvatarURLString) = await parameters.userSession.clientProxy.loadUserAvatarURLString() {
@@ -112,27 +102,5 @@ final class HomeScreenCoordinator: Coordinator, Presentable {
     
     func toPresentable() -> UIViewController {
         hostingController
-    }
-    
-    // MARK: - Private
-    
-    func updateRoomsList() {
-        roomSummaries = parameters.userSession.clientProxy.rooms.compactMap { roomProxy in
-            guard !roomProxy.isSpace, !roomProxy.isTombstoned else {
-                return nil
-            }
-            
-            if let summary = self.roomSummaries.first(where: { $0.id == roomProxy.id }) {
-                return summary
-            }
-            
-            let memberDetailProvider = parameters.memberDetailProviderManager.memberDetailProviderForRoomProxy(roomProxy)
-            
-            return RoomSummary(roomProxy: roomProxy,
-                               mediaProvider: parameters.userSession.mediaProvider,
-                               eventBriefFactory: EventBriefFactory(memberDetailProvider: memberDetailProvider))
-        }
-        
-        viewModel.updateWithRoomSummaries(roomSummaries)
     }
 }

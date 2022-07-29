@@ -16,28 +16,33 @@
 
 import Combine
 import SwiftUI
+import MatrixRustSDK
 
 typealias HomeScreenViewModelType = StateStoreViewModel<HomeScreenViewState, HomeScreenViewAction>
 
-class HomeScreenViewModel: HomeScreenViewModelType, HomeScreenViewModelProtocol {
+class HomeScreenViewModel: HomeScreenViewModelType, HomeScreenViewModelProtocol, SlidingSyncViewUpdatedDelegate {
     private let attributedStringBuilder: AttributedStringBuilderProtocol
+    private let clientProxy: ClientProxyProtocol
+    private let slidingSyncView: SlidingSyncViewProtocol
     
     private var roomUpdateListeners = Set<AnyCancellable>()
+    private var viewUpdateObserver: StoppableSpawn?
 
-    private var roomSummaries: [RoomSummaryProtocol]? {
-        didSet {
-            state.isLoadingRooms = (roomSummaries?.count ?? 0 == 0)
-        }
-    }
-    
     var callback: ((HomeScreenViewModelAction) -> Void)?
     
     // MARK: - Setup
     
-    init(attributedStringBuilder: AttributedStringBuilderProtocol) {
+    init(clientProxy: ClientProxyProtocol,
+         attributedStringBuilder: AttributedStringBuilderProtocol) {
         self.attributedStringBuilder = attributedStringBuilder
+        self.clientProxy = clientProxy
+        self.slidingSyncView = clientProxy.homeScreenView
         
-        super.init(initialViewState: HomeScreenViewState(isLoadingRooms: true))
+        super.init(initialViewState: HomeScreenViewState())
+        
+        viewUpdateObserver = slidingSyncView.onRoomsUpdated(update: self)
+        
+        updateRooms()
     }
     
     // MARK: - Public
@@ -45,7 +50,7 @@ class HomeScreenViewModel: HomeScreenViewModelType, HomeScreenViewModelProtocol 
     override func process(viewAction: HomeScreenViewAction) async {
         switch viewAction {
         case .loadRoomData(let roomIdentifier):
-            loadRoomDataForIdentifier(roomIdentifier)
+            await loadRoomDataForIdentifier(roomIdentifier)
         case .selectRoom(let roomIdentifier):
             callback?(.selectRoom(roomIdentifier: roomIdentifier))
         case .tapUserAvatar:
@@ -54,35 +59,7 @@ class HomeScreenViewModel: HomeScreenViewModelType, HomeScreenViewModelProtocol 
             callback?(.verifySession)
         }
     }
-    
-    func updateWithRoomSummaries(_ roomSummaries: [RoomSummaryProtocol]) {
-        self.roomSummaries = roomSummaries
         
-        state.rooms = roomSummaries.map { roomSummary in
-            buildOrUpdateRoomFromSummary(roomSummary)
-        }
-        
-        roomUpdateListeners.removeAll()
-        
-        roomSummaries.forEach { roomSummary in
-            roomSummary.callbacks
-                .receive(on: DispatchQueue.main)
-                .sink { [weak self] callback in
-                    guard let self = self else {
-                        return
-                    }
-                    
-                    switch callback {
-                    case .updatedData:
-                        if let index = self.state.rooms.firstIndex(where: { $0.id == roomSummary.id }) {
-                            self.state.rooms[index] = self.buildOrUpdateRoomFromSummary(roomSummary)
-                        }
-                    }
-                }
-                .store(in: &roomUpdateListeners)
-        }
-    }
-    
     func updateWithUserAvatar(_ avatar: UIImage) {
         state.userAvatar = avatar
     }
@@ -99,55 +76,62 @@ class HomeScreenViewModel: HomeScreenViewModelType, HomeScreenViewModelProtocol 
         state.showSessionVerificationBanner = false
     }
     
+    // MARK: - SlidingSyncViewUpdatedDelegate
+    
+    func didReceiveUpdate() {
+        DispatchQueue.main.async {
+            self.updateRooms()
+        }
+    }
+    
     // MARK: - Private
     
-    private func loadRoomDataForIdentifier(_ roomIdentifier: String) {
-        guard let roomSummary = roomSummaries?.first(where: { $0.id == roomIdentifier }) else {
-            MXLog.error("Invalid room identifier")
-            return
+    private func updateRooms() {
+        state.rooms = slidingSyncView.currentRoomsList().compactMap { roomListEntry in
+            switch roomListEntry {
+            case .empty:
+                return nil
+            case .filled(let roomId):
+                return buildOrUpdateRoomForIdentifier(roomId)
+            case .invalidated(let roomId):
+                return buildOrUpdateRoomForIdentifier(roomId)
+            }
         }
-        
-        Task { await roomSummary.loadDetails() }
     }
     
-    private func buildOrUpdateRoomFromSummary(_ roomSummary: RoomSummaryProtocol) -> HomeScreenRoom {
-        let lastMessage = lastMessageFromEventBrief(roomSummary.lastMessage)
-        
-        guard var room = state.rooms.first(where: { $0.id == roomSummary.id }) else {
-            return HomeScreenRoom(id: roomSummary.id,
-                                  displayName: roomSummary.displayName,
-                                  topic: roomSummary.topic,
-                                  lastMessage: lastMessage,
-                                  avatar: roomSummary.avatar,
-                                  isDirect: roomSummary.isDirect,
-                                  isEncrypted: roomSummary.isEncrypted,
-                                  isSpace: roomSummary.isSpace,
-                                  isTombstoned: roomSummary.isTombstoned)
-        }
-        
-        room.avatar = roomSummary.avatar
-        room.displayName = roomSummary.displayName
-        room.lastMessage = lastMessage
-        
-        return room
-    }
-    
-    private func lastMessageFromEventBrief(_ eventBrief: EventBrief?) -> String? {
-        guard let eventBrief = eventBrief else {
+    private func buildOrUpdateRoomForIdentifier(_ identifier: String) -> HomeScreenRoom? {
+        guard case .success(let slidingSyncRoom) = clientProxy.roomForIdentifier(identifier) else {
             return nil
         }
         
-        let senderDisplayName = senderDisplayNameForBrief(eventBrief)
-        
-        if let htmlBody = eventBrief.htmlBody,
-           let lastMessageAttributedString = attributedStringBuilder.fromHTML(htmlBody) {
-            return "\(senderDisplayName): \(String(lastMessageAttributedString.characters))"
-        } else {
-            return "\(senderDisplayName): \(eventBrief.body)"
-        }
+//        guard var room = state.rooms.first(where: { $0.id == slidingSyncRoom.roomId() }) else {
+            return HomeScreenRoom(id: slidingSyncRoom.roomId(),
+                                  displayName: slidingSyncRoom.name(),
+                                  lastMessage: stringForLastRoomMessage(slidingSyncRoom.latestRoomMessage()),
+                                  avatar: nil,
+                                  isDirect: false,
+                                  isEncrypted: false,
+                                  unreadCount: UInt(slidingSyncRoom.unreadNotifications().notificationCount()))
+//        }
+//
+//        room.displayName = slidingSyncRoom.name()
+//        room.lastMessage = stringForLastRoomMessage(slidingSyncRoom.latestRoomMessage())
+//
+//        return room
     }
     
-    private func senderDisplayNameForBrief(_ brief: EventBrief) -> String {
-        brief.senderDisplayName ?? brief.senderId
+    private func loadRoomDataForIdentifier(_ roomIdentifier: String) async {
+        
+    }
+    
+    private func stringForLastRoomMessage(_ lastRoomMessage: AnyMessage?) -> String? {
+        return nil
+//        guard let lastRoomMessage = lastRoomMessage else {
+//            return nil
+//        }
+//
+//        let message = RoomMessageFactory().buildRoomMessageFrom(lastRoomMessage)
+//
+//        return message.body
     }
 }

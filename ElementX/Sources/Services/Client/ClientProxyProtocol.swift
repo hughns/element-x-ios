@@ -20,6 +20,7 @@ enum ClientProxyError: Error {
     case failedRetrievingDisplayName
     case failedRetrievingSessionVerificationController
     case failedLoadingMedia
+    case failedRetrievingRoom
 }
 
 protocol ClientProxyProtocol {
@@ -27,7 +28,11 @@ protocol ClientProxyProtocol {
     
     var userIdentifier: String { get }
     
-    var rooms: [RoomProxy] { get }
+    var homeScreenView: SlidingSyncViewProtocol { get }
+    
+    func roomForIdentifier(_ identifier: String) -> Result<SlidingSyncRoomProtocol, ClientProxyError>
+    
+    func roomProxyForIdentifier(_ identifier: String) async -> Result<RoomProxyProtocol, ClientProxyError>
     
     func loadUserDisplayName() async -> Result<String, ClientProxyError>
         

@@ -28,6 +28,10 @@ struct MockRoomProxy: RoomProxyProtocol {
     
     var callbacks = PassthroughSubject<RoomProxyCallback, Never>()
     
+    var encryptionBadgeImage: UIImage? {
+        return Asset.Images.encryptionTrusted.image
+    }
+    
     func loadDisplayNameForUserId(_ userId: String) async -> Result<String?, RoomProxyError> {
         .failure(.failedRetrievingMemberDisplayName)
     }

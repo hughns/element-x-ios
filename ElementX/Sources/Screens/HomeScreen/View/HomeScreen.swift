@@ -29,41 +29,38 @@ struct HomeScreen: View {
                     ProgressView()
                 }
             } else {
-                if context.viewState.showSessionVerificationBanner {
-                    HStack {
-                        Text(ElementL10n.verificationVerifyDevice)
-                        Spacer()
-                        Button(ElementL10n.startVerification) {
-                            context.send(viewAction: .verifySession)
-                        }
-                    }
-                    .padding()
-                    .background(Color.element.quaternaryContent)
-                    .padding(.top, 1)
-                }
-                
                 List {
-                    Section(ElementL10n.rooms) {
-                        ForEach(context.viewState.visibleRooms) { room in
-                            RoomCell(room: room, context: context)
-                                .listRowBackground(Color.clear)
+                    if context.viewState.showSessionVerificationBanner {
+                        HStack {
+                            Spacer()
+                            VStack(alignment: .center) {
+                                Text(ElementL10n.verificationVerifyDevice)
+                                    .font(.element.body)
+                                Button(ElementL10n.startVerification) {
+                                    context.send(viewAction: .verifySession)
+                                }
+                                .buttonStyle(.elementAction())
+                            }
+                            .padding()
+                            Spacer()
                         }
+                        .background(Color.global.ice)
+                        .listRowInsets(.init(top: 0.0, leading: -8.0, bottom: 0.0, trailing: -8.0))
+                        .listRowSeparator(.hidden)
                     }
                     
-                    Section(ElementL10n.bottomActionPeople) {
-                        ForEach(context.viewState.visibleDMs) { room in
-                            RoomCell(room: room, context: context)
-                                .listRowBackground(Color.clear)
-                        }
+                    ForEach(context.viewState.searchFilteredRooms) { room in
+                        RoomCell(room: room, context: context)
+                            .listRowBackground(Color.clear)
                     }
                 }
                 .listStyle(.plain)
+                .animation(.default, value: context.viewState.searchFilteredRooms)
                 .searchable(text: $context.searchQuery)
             }
             
             Spacer()
         }
-        .background(Color.element.background)
         .transition(.slide)
         .animation(.default, value: context.viewState.showSessionVerificationBanner)
         .ignoresSafeArea(.all, edges: .bottom)
@@ -95,7 +92,7 @@ struct HomeScreen: View {
                 .clipShape(Circle())
                 .accessibilityIdentifier("userAvatarImage")
         } else {
-            EmptyView()
+            Image(systemName: "person.circle")
         }
     }
 
@@ -107,7 +104,7 @@ struct HomeScreen: View {
                 .fontWeight(.bold)
                 .foregroundColor(.primary)
         } else {
-            EmptyView()
+            Text("Unknown user")
         }
     }
 }
@@ -138,14 +135,7 @@ struct RoomCell: View {
                 VStack(alignment: .leading, spacing: 2.0) {
                     Text(roomName(room))
                         .foregroundStyle(.primary)
-                    
-                    if let roomTopic = room.topic, roomTopic.count > 0 {
-                        Text(roomTopic)
-                            .font(.footnote.weight(.semibold))
-                            .lineLimit(1)
-                            .foregroundStyle(.secondary)
-                    }
-                    
+                                        
                     if let lastMessage = room.lastMessage {
                         Text(lastMessage)
                             .font(.callout)
@@ -154,6 +144,20 @@ struct RoomCell: View {
                             .padding(.top, 2)
                     }
                 }
+                
+                Spacer()
+                
+//                if room.unreadCount > 0 {
+//                    VStack {
+//                        Text("\(room.unreadCount)")
+//                            .font(.element.footnote)
+//                            .padding(.all, 4.0)
+//                            .foregroundColor(Color.white)
+//                            .background(Color.element.accent)
+//                            .clipShape(Circle())
+//                        Spacer()
+//                    }
+//                }
             }
             .animation(.default, value: room)
             .frame(minHeight: 60.0)
@@ -170,37 +174,37 @@ struct RoomCell: View {
 
 // MARK: - Previews
 
-struct HomeScreen_Previews: PreviewProvider {
-    static var previews: some View {
-        body.preferredColorScheme(.light)
-        body.preferredColorScheme(.dark)
-    }
-
-    static var body: some View {
-        let viewModel = HomeScreenViewModel(attributedStringBuilder: AttributedStringBuilder())
-        
-        let eventBrief = EventBrief(eventId: "id",
-                                    senderId: "senderId",
-                                    senderDisplayName: "Sender",
-                                    body: "Some message",
-                                    htmlBody: nil,
-                                    date: .now)
-        
-        let roomSummaries = [MockRoomSummary(displayName: "Alpha", topic: "Topic"),
-                             MockRoomSummary(displayName: "Beta"),
-                             MockRoomSummary(displayName: "Omega", lastMessage: eventBrief)]
-        
-        viewModel.updateWithRoomSummaries(roomSummaries)
-        viewModel.updateWithUserDisplayName("username")
-        
-        if let avatarImage = UIImage(systemName: "person.fill") {
-            viewModel.updateWithUserAvatar(avatarImage)
-        }
-        
-        viewModel.showSessionVerificationBanner()
-        
-        return NavigationView {
-            HomeScreen(context: viewModel.context)
-        }
-    }
-}
+//struct HomeScreen_Previews: PreviewProvider {
+//    static var previews: some View {
+//        body.preferredColorScheme(.light)
+//        body.preferredColorScheme(.dark)
+//    }
+//
+//    static var body: some View {
+//        let viewModel = HomeScreenViewModel(attributedStringBuilder: AttributedStringBuilder())
+//
+//        let eventBrief = EventBrief(eventId: "id",
+//                                    senderId: "senderId",
+//                                    senderDisplayName: "Sender",
+//                                    body: "Some message",
+//                                    htmlBody: nil,
+//                                    date: .now)
+//
+//        let roomSummaries = [MockRoomSummary(displayName: "Alpha", topic: "Topic"),
+//                             MockRoomSummary(displayName: "Beta"),
+//                             MockRoomSummary(displayName: "Omega", lastMessage: eventBrief)]
+//
+//        viewModel.updateWithRoomSummaries(roomSummaries)
+//        viewModel.updateWithUserDisplayName("username")
+//
+//        if let avatarImage = UIImage(systemName: "person.fill") {
+//            viewModel.updateWithUserAvatar(avatarImage)
+//        }
+//
+//        viewModel.showSessionVerificationBanner()
+//
+//        return NavigationView {
+//            HomeScreen(context: viewModel.context)
+//        }
+//    }
+//}

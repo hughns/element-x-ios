@@ -14,7 +14,17 @@ struct MockClientProxy: ClientProxyProtocol {
     
     let userIdentifier: String
     
-    let rooms = [RoomProxy]()
+    var homeScreenView: SlidingSyncViewProtocol {
+        fatalError()
+    }
+    
+    func roomForIdentifier(_ identifier: String) -> Result<SlidingSyncRoomProtocol, ClientProxyError> {
+        return .failure(.failedRetrievingRoom)
+    }
+    
+    func roomProxyForIdentifier(_ identifier: String) async -> Result<RoomProxyProtocol, ClientProxyError> {
+        return .failure(.failedRetrievingRoom)
+    }
     
     func loadUserDisplayName() async -> Result<String, ClientProxyError> {
         .failure(.failedRetrievingDisplayName)

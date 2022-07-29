@@ -38,6 +38,8 @@ protocol RoomProxyProtocol {
     
     var avatarURL: String? { get }
     
+    var encryptionBadgeImage: UIImage? { get }
+    
     func loadAvatarURLForUserId(_ userId: String) async -> Result<String?, RoomProxyError>
     
     func loadDisplayNameForUserId(_ userId: String) async -> Result<String?, RoomProxyError>

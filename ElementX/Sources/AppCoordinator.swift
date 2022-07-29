@@ -74,7 +74,7 @@ class AppCoordinator: AuthenticationCoordinatorDelegate, Coordinator {
         
         let loggerConfiguration = MXLogConfiguration()
         loggerConfiguration.logLevel = .verbose
-        setupTracing(configuration: "info,hyper=warn,sled=warn,matrix_sdk_sled=warn")
+//        setupTracing(configuration: "info,hyper=warn,sled=warn,matrix_sdk_sled=warn")
         // Redirect NSLogs to files only if we are not debugging
         if isatty(STDERR_FILENO) == 0 {
             loggerConfiguration.redirectLogsToFiles = true
@@ -219,34 +219,40 @@ class AppCoordinator: AuthenticationCoordinatorDelegate, Coordinator {
     // MARK: Rooms
 
     private func presentRoomWithIdentifier(_ roomIdentifier: String) {
-        guard let roomProxy = userSession.clientProxy.rooms.first(where: { $0.id == roomIdentifier }) else {
-            MXLog.error("Invalid room identifier: \(roomIdentifier)")
-            return
-        }
-        let userId = userSession.clientProxy.userIdentifier
-        
-        let memberDetailProvider = memberDetailProviderManager.memberDetailProviderForRoomProxy(roomProxy)
-        
-        let timelineItemFactory = RoomTimelineItemFactory(mediaProvider: userSession.mediaProvider,
-                                                          memberDetailProvider: memberDetailProvider,
-                                                          attributedStringBuilder: AttributedStringBuilder())
-        
-        let timelineController = RoomTimelineController(userId: userId,
-                                                        timelineProvider: RoomTimelineProvider(roomProxy: roomProxy),
-                                                        timelineItemFactory: timelineItemFactory,
-                                                        mediaProvider: userSession.mediaProvider,
-                                                        memberDetailProvider: memberDetailProvider)
-        
-        let parameters = RoomScreenCoordinatorParameters(timelineController: timelineController,
-                                                         roomName: roomProxy.displayName ?? roomProxy.name,
-                                                         roomAvatar: userSession.mediaProvider.imageFromURLString(roomProxy.avatarURL),
-                                                         roomEncryptionBadge: roomProxy.encryptionBadgeImage)
-        let coordinator = RoomScreenCoordinator(parameters: parameters)
-        
-        add(childCoordinator: coordinator)
-        navigationRouter.push(coordinator) { [weak self] in
-            guard let self = self else { return }
-            self.stateMachine.processEvent(.dismissedRoomScreen)
+        self.showLoadingIndicator()
+        Task {
+            guard case .success(let roomProxy) = await userSession.clientProxy.roomProxyForIdentifier(roomIdentifier) else {
+                self.hideLoadingIndicator()
+                return
+            }
+         
+            let userId = userSession.clientProxy.userIdentifier
+            
+            let memberDetailProvider = memberDetailProviderManager.memberDetailProviderForRoomProxy(roomProxy)
+            
+            let timelineItemFactory = RoomTimelineItemFactory(mediaProvider: userSession.mediaProvider,
+                                                              memberDetailProvider: memberDetailProvider,
+                                                              attributedStringBuilder: AttributedStringBuilder())
+            
+            let timelineController = RoomTimelineController(userId: userId,
+                                                            timelineProvider: RoomTimelineProvider(roomProxy: roomProxy),
+                                                            timelineItemFactory: timelineItemFactory,
+                                                            mediaProvider: userSession.mediaProvider,
+                                                            memberDetailProvider: memberDetailProvider)
+            
+            let parameters = RoomScreenCoordinatorParameters(timelineController: timelineController,
+                                                             roomName: roomProxy.displayName ?? roomProxy.name,
+                                                             roomAvatar: userSession.mediaProvider.imageFromURLString(roomProxy.avatarURL),
+                                                             roomEncryptionBadge: roomProxy.encryptionBadgeImage)
+            let coordinator = RoomScreenCoordinator(parameters: parameters)
+            
+            self.hideLoadingIndicator()
+            
+            add(childCoordinator: coordinator)
+            navigationRouter.push(coordinator) { [weak self] in
+                guard let self = self else { return }
+                self.stateMachine.processEvent(.dismissedRoomScreen)
+            }
         }
     }
     
