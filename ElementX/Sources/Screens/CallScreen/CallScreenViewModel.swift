@@ -139,15 +139,19 @@ class CallScreenViewModel: CallScreenViewModelType, CallScreenViewModelProtocol 
             // We need widget messaging to work before enabling CallKit, otherwise mute, hangup etc do nothing.
         
         case .roomCall(let roomProxy, let clientProxy, let clientID, let elementCallBaseURL, let elementCallBaseURLOverride, let colorScheme):
-            // Wait for room states to be up to date before starting the call and notifying others
-            syncUpdateCancellable = clientProxy.actionsPublisher
-                .filter(\.isSyncUpdate)
+            // Wait for an initial room state update before starting the call and notifying others
+            MXLog.info("ElementCall requesting initialSyncCompleted")
+            let syncUpdateRequested = Date.now
+            syncUpdateCancellable = clientProxy.initialSyncCompletedSubjectPublisher
+                .filter { $0 }
                 .timeout(.seconds(5), scheduler: DispatchQueue.main)
                 .first() // Timeout will make the publisher complete, use first to handle both branches in the same place
                 .sink(receiveCompletion: { [weak self] _ in
                     Task { [weak self] in
                         guard let self else { return }
                         
+                        MXLog.info("ElementCall initialSyncCompleted took: \(Date.now.timeIntervalSince(syncUpdateRequested))s")
+
                         let baseURL = if let elementCallBaseURLOverride {
                             elementCallBaseURLOverride
                         } else if case .success(let wellKnown) = await clientProxy.getElementWellKnown(), let wellKnownCall = wellKnown?.call {

@@ -41,7 +41,8 @@ extension ClientProxyMock {
         actionsPublisher = PassthroughSubject<ClientProxyAction, Never>().eraseToAnyPublisher()
         loadingStatePublisher = CurrentValuePublisher<ClientProxyLoadingState, Never>(.notLoading)
         verificationStatePublisher = CurrentValuePublisher<SessionVerificationState, Never>(.unknown)
-        
+        initialSyncCompletedSubjectPublisher = CurrentValuePublisher<Bool, Never>(false)
+
         userAvatarURLPublisher = CurrentValueSubject<URL?, Never>(nil).asCurrentValuePublisher()
         
         userDisplayNamePublisher = CurrentValueSubject<String?, Never>("User display name").asCurrentValuePublisher()

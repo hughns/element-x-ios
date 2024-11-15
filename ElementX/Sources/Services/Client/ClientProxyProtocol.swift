@@ -83,6 +83,8 @@ protocol ClientProxyProtocol: AnyObject, MediaLoaderProtocol {
     
     var verificationStatePublisher: CurrentValuePublisher<SessionVerificationState, Never> { get }
     
+    var initialSyncCompletedSubjectPublisher: CurrentValuePublisher<Bool, Never> { get }
+
     var userID: String { get }
 
     var deviceID: String? { get }

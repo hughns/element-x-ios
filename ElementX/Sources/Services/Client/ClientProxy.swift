@@ -130,6 +130,11 @@ class ClientProxy: ClientProxyProtocol {
         verificationStateSubject.asCurrentValuePublisher()
     }
     
+    private let initialSyncCompletedSubject = CurrentValueSubject<Bool, Never>(false)
+    var initialSyncCompletedSubjectPublisher: CurrentValuePublisher<Bool, Never> {
+        initialSyncCompletedSubject.asCurrentValuePublisher()
+    }
+
     var roomsToAwait: Set<String> = []
     
     private let sendQueueStatusSubject = CurrentValueSubject<Bool, Never>(false)
@@ -880,7 +885,8 @@ class ClientProxy: ClientProxyProtocol {
             
             // Hide the sync spinner as soon as we get any update back
             actionsSubject.send(.receivedSyncUpdate)
-            
+            initialSyncCompletedSubject.send(true)
+
             if ignoredUsersSubject.value == nil {
                 updateIgnoredUsers()
             }
