@@ -9,31 +9,30 @@
 import Combine
 import Foundation
 
-typealias QRCodeLoginScreenViewModelType = StateStoreViewModel<QRCodeLoginScreenViewState, QRCodeLoginScreenViewAction>
+typealias QRCodeReciprocateScreenViewModelType = StateStoreViewModel<QRCodeReciprocateScreenViewState, QRCodeReciprocateScreenViewAction>
 
-class QRCodeLoginScreenViewModel: QRCodeLoginScreenViewModelType, QRCodeLoginScreenViewModelProtocol {
-    private let qrCodeLoginService: QRCodeLoginServiceProtocol
+class QRCodeReciprocateScreenViewModel: QRCodeReciprocateScreenViewModelType, QRCodeReciprocateScreenViewModelProtocol {
+    private let clientProxy: ClientProxyProtocol
     private let appMediator: AppMediatorProtocol
     
-    private let actionsSubject: PassthroughSubject<QRCodeLoginScreenViewModelAction, Never> = .init()
-    var actionsPublisher: AnyPublisher<QRCodeLoginScreenViewModelAction, Never> {
+    private let actionsSubject: PassthroughSubject<QRCodeReciprocateScreenViewModelAction, Never> = .init()
+    var actionsPublisher: AnyPublisher<QRCodeReciprocateScreenViewModelAction, Never> {
         actionsSubject.eraseToAnyPublisher()
     }
     
     private var scanTask: Task<Void, Never>?
 
-    init(qrCodeLoginService: QRCodeLoginServiceProtocol,
-         canSignInManually: Bool,
+    init(clientProxy: ClientProxyProtocol,
          appMediator: AppMediatorProtocol) {
-        self.qrCodeLoginService = qrCodeLoginService
+        self.clientProxy = clientProxy
         self.appMediator = appMediator
-        super.init(initialViewState: QRCodeLoginScreenViewState(canSignInManually: canSignInManually))
+        super.init(initialViewState: QRCodeReciprocateScreenViewState())
         setupSubscriptions()
     }
     
     // MARK: - Public
     
-    override func process(viewAction: QRCodeLoginScreenViewAction) {
+    override func process(viewAction: QRCodeReciprocateScreenViewAction) {
         switch viewAction {
         case .cancel:
             actionsSubject.send(.cancel)
@@ -41,8 +40,6 @@ class QRCodeLoginScreenViewModel: QRCodeLoginScreenViewModelType, QRCodeLoginScr
             Task { await startScanIfPossible() }
         case .openSettings:
             appMediator.openAppSettings()
-        case .signInManually:
-            actionsSubject.send(.signInManually)
         }
     }
     
@@ -61,7 +58,7 @@ class QRCodeLoginScreenViewModel: QRCodeLoginScreenViewModelType, QRCodeLoginScr
             }
             .store(in: &cancellables)
         
-        qrCodeLoginService.qrLoginProgressPublisher
+        clientProxy.qrReciprocateProgressPublisher
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] progress in
@@ -107,10 +104,10 @@ class QRCodeLoginScreenViewModel: QRCodeLoginScreenViewModelType, QRCodeLoginScr
             }
             
             MXLog.info("Scanning QR code: \(qrData)")
-            switch await qrCodeLoginService.loginWithQRCode(data: qrData) {
-            case let .success(session):
-                MXLog.info("QR Login completed")
-                actionsSubject.send(.done(userSession: session))
+            switch await clientProxy.reciprocateWithQRCode(data: qrData) {
+            case .success:
+                MXLog.info("QR Reciprocate completed")
+                actionsSubject.send(.done)
             case .failure(.qrCodeError(let error)):
                 handleError(error)
             case .failure:
@@ -124,10 +121,8 @@ class QRCodeLoginScreenViewModel: QRCodeLoginScreenViewModelType, QRCodeLoginScr
         switch error {
         case .invalidQRCode:
             state.state = .scan(.scanFailed(.invalid))
-        case .providerNotAllowed(let scannedProvider, let allowedProviders):
-            state.state = .scan(.scanFailed(.notAllowed(scannedProvider: scannedProvider, allowedProviders: allowedProviders)))
-        case .deviceNotSignedIn:
-            state.state = .scan(.scanFailed(.deviceNotSignedIn))
+        case .deviceAlreadySignedIn:
+            state.state = .scan(.scanFailed(.deviceAlreadySignedIn))
         case .cancelled:
             state.state = .error(.cancelled)
         case .connectionInsecure:
@@ -140,21 +135,22 @@ class QRCodeLoginScreenViewModel: QRCodeLoginScreenViewModelType, QRCodeLoginScr
             state.state = .error(.expired)
         case .deviceNotSupported:
             state.state = .error(.deviceNotSupported)
-        case .deviceAlreadySignedIn, .unknown:
+        // these are not applicable to reciprocate so map these to unknown:
+        case .providerNotAllowed, .deviceNotSignedIn, .unknown:
             state.state = .error(.unknown)
         }
     }
         
     /// Only for mocking initial states
-    fileprivate init(state: QRCodeLoginState, canSignInManually: Bool) {
-        qrCodeLoginService = QRCodeLoginServiceMock()
+    fileprivate init(state: QRCodeReciprocateState) {
+        clientProxy = ClientProxyMock()
         appMediator = AppMediatorMock.default
-        super.init(initialViewState: .init(state: state, canSignInManually: canSignInManually))
+        super.init(initialViewState: .init(state: state))
     }
 }
 
-extension QRCodeLoginScreenViewModel {
-    static func mock(state: QRCodeLoginState, canSignInManually: Bool = true) -> QRCodeLoginScreenViewModel {
-        QRCodeLoginScreenViewModel(state: state, canSignInManually: canSignInManually)
+extension QRCodeReciprocateScreenViewModel {
+    static func mock(state: QRCodeReciprocateState) -> QRCodeReciprocateScreenViewModel {
+        QRCodeReciprocateScreenViewModel(state: state)
     }
 }

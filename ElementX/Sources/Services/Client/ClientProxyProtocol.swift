@@ -242,4 +242,9 @@ protocol ClientProxyProtocol: AnyObject {
     
     func setTimelineMediaVisibility(_ value: TimelineMediaVisibility) async -> Result<Void, ClientProxyError>
     func setHideInviteAvatars(_ value: Bool) async -> Result<Void, ClientProxyError>
+    
+    // MARK: - QR
+
+    var qrReciprocateProgressPublisher: AnyPublisher<GrantQrLoginProgress, Never> { get }
+    func reciprocateWithQRCode(data: Data) async -> Result<Void, AuthenticationServiceError>
 }

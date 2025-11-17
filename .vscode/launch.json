@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:element-x-ios}",
+            "name": "Debug tools",
+            "target": "tools",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug tools"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:element-x-ios}",
+            "name": "Release tools",
+            "target": "tools",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release tools"
+        }
+    ]
+}

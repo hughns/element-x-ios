@@ -897,6 +897,51 @@ class ClientProxy: ClientProxyProtocol {
         }
     }
     
+    // MARK: - QR
+    
+    private let qrReciprocateProgressSubject = PassthroughSubject<GrantQrLoginProgress, Never>()
+    var qrReciprocateProgressPublisher: AnyPublisher<GrantQrLoginProgress, Never> {
+        qrReciprocateProgressSubject.eraseToAnyPublisher()
+    }
+
+    func reciprocateWithQRCode(data: Data) async -> Result<Void, AuthenticationServiceError> {
+        let qrData: QrCodeData
+        do {
+            qrData = try QrCodeData.fromBytes(bytes: data)
+        } catch {
+            MXLog.error("QRCode decode error: \(error)")
+            return .failure(.qrCodeError(.invalidQRCode))
+        }
+        
+        if qrData.intent() != .login {
+            MXLog.error("The QR code is from a device that is already signed in.")
+            return .failure(.qrCodeError(.deviceAlreadySignedIn))
+        }
+        
+        let scannedBaseUrl = qrData.baseUrl()
+        
+        if !appSettings.allowOtherAccountProviders, !appSettings.accountProviders.contains(scannedBaseUrl) {
+            MXLog.error("The scanned device's server is not allowed: \(scannedBaseUrl)")
+            return .failure(.qrCodeError(.providerNotAllowed(scannedProvider: scannedBaseUrl, allowedProviders: appSettings.accountProviders)))
+        }
+        
+        let listener = SDKListener { [weak self] progress in
+            self?.qrReciprocateProgressSubject.send(progress)
+        }
+        
+        do {
+            let qrCodeHandler = client.newGrantLoginWithQrCodeHandler()
+            try await qrCodeHandler.scan(qrCodeData: qrData, progressListener: listener)
+            return .success(())
+        } catch let error as HumanQrLoginError {
+            MXLog.error("QRCode reciprocate error: \(error)")
+            return .failure(error.serviceError)
+        } catch {
+            MXLog.error("QRCode reciprocate unknown error: \(error)")
+            return .failure(.qrCodeError(.unknown))
+        }
+    }
+    
     // MARK: - Private
     
     private func cacheAccountURL() async {

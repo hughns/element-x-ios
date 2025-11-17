@@ -2194,6 +2194,16 @@ class CXProviderMock: CXProviderProtocol, @unchecked Sendable {
     }
 }
 class ClientProxyMock: ClientProxyProtocol, @unchecked Sendable {
+    var qrReciprocateProgressPublisher: AnyPublisher<MatrixRustSDK.QrLoginProgress, Never> {
+        get { return underlyingQrReciprocateProgressPublisher }
+        set(value) { underlyingQrReciprocateProgressPublisher = value }
+    }
+    var underlyingQrReciprocateProgressPublisher: AnyPublisher<MatrixRustSDK.QrLoginProgress, Never>!
+
+    func reciprocateWithQRCode(data: Data) async -> Result<Void, AuthenticationServiceError> {
+        .success(())
+    }
+    
     var actionsPublisher: AnyPublisher<ClientProxyAction, Never> {
         get { return underlyingActionsPublisher }
         set(value) { underlyingActionsPublisher = value }

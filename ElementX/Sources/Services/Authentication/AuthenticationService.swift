@@ -162,14 +162,17 @@ class AuthenticationService: AuthenticationServiceProtocol {
             return .failure(.qrCodeError(.invalidQRCode))
         }
         
-        guard let scannedServerName = qrData.serverName() else {
+        if qrData.intent() != .reciprocate {
             MXLog.error("The QR code is from a device that is not yet signed in.")
             return .failure(.qrCodeError(.deviceNotSignedIn))
         }
         
-        if !appSettings.allowOtherAccountProviders, !appSettings.accountProviders.contains(scannedServerName) {
-            MXLog.error("The scanned device's server is not allowed: \(scannedServerName)")
-            return .failure(.qrCodeError(.providerNotAllowed(scannedProvider: scannedServerName, allowedProviders: appSettings.accountProviders)))
+        let scannedBaseUrl = qrData.baseUrl()
+        
+        // TODO: this probably needs fixing up to work with base URL vs server name
+        if !appSettings.allowOtherAccountProviders, !appSettings.accountProviders.contains(scannedBaseUrl) {
+            MXLog.error("The scanned device's server is not allowed: \(scannedBaseUrl)")
+            return .failure(.qrCodeError(.providerNotAllowed(scannedProvider: scannedBaseUrl, allowedProviders: appSettings.accountProviders)))
         }
         
         let listener = SDKListener { [weak self] progress in
@@ -177,7 +180,7 @@ class AuthenticationService: AuthenticationServiceProtocol {
         }
         
         do {
-            let client = try await makeClient(homeserverAddress: scannedServerName)
+            let client = try await makeClient(homeserverAddress: scannedBaseUrl)
             let qrCodeHandler = client.newLoginWithQrCodeHandler(oidcConfiguration: appSettings.oidcConfiguration.rustValue)
             try await qrCodeHandler.scan(qrCodeData: qrData, progressListener: listener)
             return await userSession(for: client)
@@ -231,7 +234,7 @@ class AuthenticationService: AuthenticationServiceProtocol {
     }
 }
 
-private extension HumanQrLoginError {
+extension HumanQrLoginError {
     var serviceError: AuthenticationServiceError {
         switch self {
         case .Cancelled:

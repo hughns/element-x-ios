@@ -25,6 +25,7 @@ enum SettingsScreenViewModelAction: Equatable {
     case developerOptions
     case logout
     case deactivateAccount
+    case linkNewDevice
 }
 
 enum SettingsScreenSecuritySectionMode {
@@ -74,4 +75,5 @@ enum SettingsScreenViewAction {
     case labs
     case logout
     case deactivateAccount
+    case linkNewDevice
 }

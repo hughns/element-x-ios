@@ -121,6 +121,8 @@ class SettingsScreenViewModel: SettingsScreenViewModelType, SettingsScreenViewMo
             actionsSubject.send(.developerOptions)
         case .deactivateAccount:
             actionsSubject.send(.deactivateAccount)
+        case .linkNewDevice:
+            actionsSubject.send(.linkNewDevice)
         }
     }
 }

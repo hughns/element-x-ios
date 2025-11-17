@@ -124,7 +124,15 @@ struct SettingsScreen: View {
                             context.send(viewAction: .manageAccount(url: url))
                         })
             }
-            
+
+            if let url = context.viewState.accountSessionsListURL {
+                ListRow(label: .default(title: "Link new device",
+                                        icon: \.qrCode),
+                        kind: .button {
+                            context.send(viewAction: .linkNewDevice)
+                        })
+            }
+
             if context.viewState.showBlockedUsers {
                 ListRow(label: .default(title: L10n.commonBlockedUsers,
                                         icon: \.block),

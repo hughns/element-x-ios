@@ -12575,17 +12575,17 @@ open class QrCodeDataSDKMock: MatrixRustSDK.QrCodeData, @unchecked Sendable {
     {
     }
 
-    //MARK: - serverName
+    //MARK: - baseUrl
 
-    var serverNameUnderlyingCallsCount = 0
-    open var serverNameCallsCount: Int {
+    var baseUrlUnderlyingCallsCount = 0
+    open var baseUrlCallsCount: Int {
         get {
             if Thread.isMainThread {
-                return serverNameUnderlyingCallsCount
+                return baseUrlUnderlyingCallsCount
             } else {
                 var returnValue: Int? = nil
                 DispatchQueue.main.sync {
-                    returnValue = serverNameUnderlyingCallsCount
+                    returnValue = baseUrlUnderlyingCallsCount
                 }
 
                 return returnValue!
@@ -12593,27 +12593,27 @@ open class QrCodeDataSDKMock: MatrixRustSDK.QrCodeData, @unchecked Sendable {
         }
         set {
             if Thread.isMainThread {
-                serverNameUnderlyingCallsCount = newValue
+                baseUrlUnderlyingCallsCount = newValue
             } else {
                 DispatchQueue.main.sync {
-                    serverNameUnderlyingCallsCount = newValue
+                    baseUrlUnderlyingCallsCount = newValue
                 }
             }
         }
     }
-    open var serverNameCalled: Bool {
-        return serverNameCallsCount > 0
+    open var baseUrlCalled: Bool {
+        return baseUrlCallsCount > 0
     }
 
-    var serverNameUnderlyingReturnValue: String?
-    open var serverNameReturnValue: String? {
+    var baseUrlUnderlyingReturnValue: String!
+    open var baseUrlReturnValue: String! {
         get {
             if Thread.isMainThread {
-                return serverNameUnderlyingReturnValue
+                return baseUrlUnderlyingReturnValue
             } else {
-                var returnValue: String?? = nil
+                var returnValue: String? = nil
                 DispatchQueue.main.sync {
-                    returnValue = serverNameUnderlyingReturnValue
+                    returnValue = baseUrlUnderlyingReturnValue
                 }
 
                 return returnValue!
@@ -12621,22 +12621,152 @@ open class QrCodeDataSDKMock: MatrixRustSDK.QrCodeData, @unchecked Sendable {
         }
         set {
             if Thread.isMainThread {
-                serverNameUnderlyingReturnValue = newValue
+                baseUrlUnderlyingReturnValue = newValue
             } else {
                 DispatchQueue.main.sync {
-                    serverNameUnderlyingReturnValue = newValue
+                    baseUrlUnderlyingReturnValue = newValue
                 }
             }
         }
     }
-    open var serverNameClosure: (() -> String?)?
+    open var baseUrlClosure: (() -> String)?
 
-    open override func serverName() -> String? {
-        serverNameCallsCount += 1
-        if let serverNameClosure = serverNameClosure {
-            return serverNameClosure()
+    open override func baseUrl() -> String {
+        baseUrlCallsCount += 1
+        if let baseUrlClosure = baseUrlClosure {
+            return baseUrlClosure()
         } else {
-            return serverNameReturnValue
+            return baseUrlReturnValue
+        }
+    }
+
+    //MARK: - intent
+
+    var intentUnderlyingCallsCount = 0
+    open var intentCallsCount: Int {
+        get {
+            if Thread.isMainThread {
+                return intentUnderlyingCallsCount
+            } else {
+                var returnValue: Int? = nil
+                DispatchQueue.main.sync {
+                    returnValue = intentUnderlyingCallsCount
+                }
+
+                return returnValue!
+            }
+        }
+        set {
+            if Thread.isMainThread {
+                intentUnderlyingCallsCount = newValue
+            } else {
+                DispatchQueue.main.sync {
+                    intentUnderlyingCallsCount = newValue
+                }
+            }
+        }
+    }
+    open var intentCalled: Bool {
+        return intentCallsCount > 0
+    }
+
+    var intentUnderlyingReturnValue: QrCodeIntent!
+    open var intentReturnValue: QrCodeIntent! {
+        get {
+            if Thread.isMainThread {
+                return intentUnderlyingReturnValue
+            } else {
+                var returnValue: QrCodeIntent? = nil
+                DispatchQueue.main.sync {
+                    returnValue = intentUnderlyingReturnValue
+                }
+
+                return returnValue!
+            }
+        }
+        set {
+            if Thread.isMainThread {
+                intentUnderlyingReturnValue = newValue
+            } else {
+                DispatchQueue.main.sync {
+                    intentUnderlyingReturnValue = newValue
+                }
+            }
+        }
+    }
+    open var intentClosure: (() -> QrCodeIntent)?
+
+    open override func intent() -> QrCodeIntent {
+        intentCallsCount += 1
+        if let intentClosure = intentClosure {
+            return intentClosure()
+        } else {
+            return intentReturnValue
+        }
+    }
+
+    //MARK: - rendezvousId
+
+    var rendezvousIdUnderlyingCallsCount = 0
+    open var rendezvousIdCallsCount: Int {
+        get {
+            if Thread.isMainThread {
+                return rendezvousIdUnderlyingCallsCount
+            } else {
+                var returnValue: Int? = nil
+                DispatchQueue.main.sync {
+                    returnValue = rendezvousIdUnderlyingCallsCount
+                }
+
+                return returnValue!
+            }
+        }
+        set {
+            if Thread.isMainThread {
+                rendezvousIdUnderlyingCallsCount = newValue
+            } else {
+                DispatchQueue.main.sync {
+                    rendezvousIdUnderlyingCallsCount = newValue
+                }
+            }
+        }
+    }
+    open var rendezvousIdCalled: Bool {
+        return rendezvousIdCallsCount > 0
+    }
+
+    var rendezvousIdUnderlyingReturnValue: String!
+    open var rendezvousIdReturnValue: String! {
+        get {
+            if Thread.isMainThread {
+                return rendezvousIdUnderlyingReturnValue
+            } else {
+                var returnValue: String? = nil
+                DispatchQueue.main.sync {
+                    returnValue = rendezvousIdUnderlyingReturnValue
+                }
+
+                return returnValue!
+            }
+        }
+        set {
+            if Thread.isMainThread {
+                rendezvousIdUnderlyingReturnValue = newValue
+            } else {
+                DispatchQueue.main.sync {
+                    rendezvousIdUnderlyingReturnValue = newValue
+                }
+            }
+        }
+    }
+    open var rendezvousIdClosure: (() -> String)?
+
+    open override func rendezvousId() -> String {
+        rendezvousIdCallsCount += 1
+        if let rendezvousIdClosure = rendezvousIdClosure {
+            return rendezvousIdClosure()
+        } else {
+            return rendezvousIdReturnValue
         }
     }
 }

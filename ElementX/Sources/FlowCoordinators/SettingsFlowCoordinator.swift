@@ -109,6 +109,8 @@ class SettingsFlowCoordinator: FlowCoordinatorProtocol {
                     presentDeveloperOptions()
                 case .deactivateAccount:
                     presentDeactivateAccount()
+                case .linkNewDevice:
+                    presentLinkNewDeviceFlow()
                 }
             }
             .store(in: &cancellables)
@@ -260,5 +262,26 @@ class SettingsFlowCoordinator: FlowCoordinatorProtocol {
                                                                 presentationAnchor: flowParameters.windowManager.mainWindow,
                                                                 appSettings: flowParameters.appSettings)
         accountSettingsPresenter?.start()
+    }
+    
+    // MARK: - QR
+
+    private func presentLinkNewDeviceFlow() {
+        let coordinator = QRCodeReciprocateScreenCoordinator(parameters: .init(clientProxy: flowParameters.userSession.clientProxy,
+                                                                               orientationManager: flowParameters.appMediator.windowManager,
+                                                                               appMediator: flowParameters.appMediator))
+        coordinator.actionsPublisher.sink { [weak self] action in
+            guard let self else {
+                return
+            }
+            switch action {
+            case .cancel:
+                navigationStackCoordinator.setSheetCoordinator(nil)
+            case .done:
+                navigationStackCoordinator.setSheetCoordinator(nil)
+            }
+        }
+        .store(in: &cancellables)
+        navigationStackCoordinator.setSheetCoordinator(coordinator) // Don't use the callback (interactive dismiss disabled), choose the event with the action.
     }
 }

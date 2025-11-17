@@ -1,12 +1,9 @@
----
 name: ElementX
 attributes:
   ORGANIZATIONNAME: Element
-
 fileGroups:
 - project.yml
 - app.yml
-
 options:
   groupSortPosition: bottom
   createIntermediateGroups: true
@@ -43,9 +40,8 @@ options:
     - AccessibilityTests
   fileTypes:
     icon:
-      file: true # https://github.com/yonaskolb/XcodeGen/issues/1556
+      file: true
   postGenCommand: cd Tools/XcodeGen && sh postGenCommand.sh
-
 settings:
   CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED: true
   ENABLE_BITCODE: false
@@ -54,7 +50,6 @@ settings:
   MARKETING_VERSION: 25.11.2
   CURRENT_PROJECT_VERSION: 1
   SUPPORTS_MACCATALYST: false
-
 include:
 - path: app.yml
 - path: ElementX/SupportingFiles/target.yml
@@ -65,37 +60,28 @@ include:
 - path: NSE/SupportingFiles/target.yml
 - path: ShareExtension/SupportingFiles/target.yml
 - path: AccessibilityTests/SupportingFiles/target.yml
-# - path: MyAppVariant/override.yml
-
 packages:
-  # Element/Matrix dependencies
   MatrixRustSDK:
-    url: https://github.com/element-hq/matrix-rust-components-swift
-    exactVersion: 25.11.13
-    # path: ../matrix-rust-sdk
+    # url: https://github.com/element-hq/matrix-rust-components-swift
+    # exactVersion: 25.11.13
+    path: ../matrix-rust-sdk
   Compound:
     path: compound-ios
   AnalyticsEvents:
     url: https://github.com/matrix-org/matrix-analytics-events
     minorVersion: 0.29.2
-    # path: ../matrix-analytics-events
   EmbeddedElementCall:
     url: https://github.com/element-hq/element-call-swift
     exactVersion: 0.16.0-rc.4
   Emojibase:
     url: https://github.com/matrix-org/emojibase-bindings
     minorVersion: 1.4.2
-    # path: ../emojibase-bindings
   SwiftOGG:
     url: https://github.com/element-hq/swift-ogg
     minorVersion: 0.0.3
-    # path: ../swift-ogg
   WysiwygComposer:
     url: https://github.com/element-hq/matrix-rich-text-editor-swift
     exactVersion: 2.37.12
-    # path: ../matrix-rich-text-editor/platforms/ios/lib/WysiwygComposer
-  
-  # External dependencies
   Algorithms:
     url: https://github.com/apple/swift-algorithms
     minorVersion: 1.2.1
@@ -135,7 +121,7 @@ packages:
   Mapbox:
     url: https://github.com/maplibre/maplibre-gl-native-distribution
     minorVersion: 5.13.0
-  Mutex: # Backports Swift's built in Mutex so we can use it on iOS 17.
+  Mutex:
     url: https://github.com/swhitty/swift-mutex
     minorVersion: 0.0.6
   PostHog:
@@ -156,7 +142,6 @@ packages:
   Version:
     url: https://github.com/mxcl/Version
     minorVersion: 2.2.0
-
 aggregateTargets:
   Periphery:
     buildScripts:
