@@ -73,8 +73,14 @@ class QRCodeReciprocateScreenViewModel: QRCodeReciprocateScreenViewModelType, QR
                 switch progress {
                 case .establishingSecureChannel(_, let stringCode):
                     state.state = .displayCode(.deviceCode(stringCode))
-                case .waitingForToken(let code):
-                    state.state = .displayCode(.verificationCode(code))
+                case .waitingForAuth(let verificationUri):
+                    // verificationUri is a String; ASWebAuthenticationSession requires a URL.
+                    guard let url = URL(string: verificationUri) else {
+                        MXLog.error("Invalid verification URI: \(verificationUri)")
+                        state.state = .error(.unknown)
+                        return
+                    }
+                    actionsSubject.send(.waitingForAuth(url))
                 default:
                     break
                 }

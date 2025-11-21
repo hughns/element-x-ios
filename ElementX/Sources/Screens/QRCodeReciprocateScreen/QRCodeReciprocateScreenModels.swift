@@ -10,6 +10,7 @@ import Foundation
 enum QRCodeReciprocateScreenViewModelAction {
     case cancel
     case done
+    case waitingForAuth(URL)
 }
 
 struct QRCodeReciprocateScreenViewState: BindableState {

@@ -12,6 +12,8 @@ struct QRCodeReciprocateScreenCoordinatorParameters {
     let clientProxy: ClientProxyProtocol
     let orientationManager: OrientationManagerProtocol
     let appMediator: AppMediatorProtocol
+    let appSettings: AppSettings
+    let presentationAnchor: UIWindow
 }
 
 enum QRCodeReciprocateScreenCoordinatorAction {
@@ -22,7 +24,9 @@ enum QRCodeReciprocateScreenCoordinatorAction {
 final class QRCodeReciprocateScreenCoordinator: CoordinatorProtocol {
     private let viewModel: QRCodeReciprocateScreenViewModelProtocol
     private let orientationManager: OrientationManagerProtocol
-    
+    private let appSettings: AppSettings
+    private let presentationAnchor: UIWindow
+
     private var cancellables = Set<AnyCancellable>()
  
     private let actionsSubject: PassthroughSubject<QRCodeReciprocateScreenCoordinatorAction, Never> = .init()
@@ -34,6 +38,8 @@ final class QRCodeReciprocateScreenCoordinator: CoordinatorProtocol {
         viewModel = QRCodeReciprocateScreenViewModel(clientProxy: parameters.clientProxy,
                                                      appMediator: parameters.appMediator)
         orientationManager = parameters.orientationManager
+        appSettings = parameters.appSettings
+        presentationAnchor = parameters.presentationAnchor
     }
     
     func start() {
@@ -46,6 +52,9 @@ final class QRCodeReciprocateScreenCoordinator: CoordinatorProtocol {
                 self.actionsSubject.send(.cancel)
             case .done:
                 self.actionsSubject.send(.done)
+            case .waitingForAuth(let url):
+                let session = OIDCAccountSettingsPresenter(accountURL: url, presentationAnchor: presentationAnchor, appSettings: appSettings)
+                session.start()
             }
         }
         .store(in: &cancellables)

@@ -269,7 +269,9 @@ class SettingsFlowCoordinator: FlowCoordinatorProtocol {
     private func presentLinkNewDeviceFlow() {
         let coordinator = QRCodeReciprocateScreenCoordinator(parameters: .init(clientProxy: flowParameters.userSession.clientProxy,
                                                                                orientationManager: flowParameters.appMediator.windowManager,
-                                                                               appMediator: flowParameters.appMediator))
+                                                                               appMediator: flowParameters.appMediator,
+                                                                               appSettings: flowParameters.appSettings,
+                                                                               presentationAnchor: flowParameters.windowManager.mainWindow))
         coordinator.actionsPublisher.sink { [weak self] action in
             guard let self else {
                 return
