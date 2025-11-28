@@ -899,15 +899,15 @@ class ClientProxy: ClientProxyProtocol {
     
     // MARK: - QR
     
-    private let qrReciprocateProgressSubject = PassthroughSubject<GrantQrLoginProgress, Never>()
-    var qrReciprocateProgressPublisher: AnyPublisher<GrantQrLoginProgress, Never> {
-        qrReciprocateProgressSubject.eraseToAnyPublisher()
+    private let qrGrantLoginWithScannedQRCodeProgressSubject = PassthroughSubject<GrantQrLoginProgress, Never>()
+    var qrGrantLoginWithScannedQRCodeProgressPublisher: AnyPublisher<GrantQrLoginProgress, Never> {
+        qrGrantLoginWithScannedQRCodeProgressSubject.eraseToAnyPublisher()
     }
 
-    func reciprocateWithQRCode(data: Data) async -> Result<Void, AuthenticationServiceError> {
+    func grantLoginWithScannedQRCode(scannedQRData: Data) async -> Result<Void, AuthenticationServiceError> {
         let qrData: QrCodeData
         do {
-            qrData = try QrCodeData.fromBytes(bytes: data)
+            qrData = try QrCodeData.fromBytes(bytes: scannedQRData)
         } catch {
             MXLog.error("QRCode decode error: \(error)")
             return .failure(.qrCodeError(.invalidQRCode))
@@ -926,11 +926,12 @@ class ClientProxy: ClientProxyProtocol {
         }
         
         let listener = SDKListener { [weak self] progress in
-            self?.qrReciprocateProgressSubject.send(progress)
+            self?.qrGrantLoginWithScannedQRCodeProgressSubject.send(progress)
         }
         
         do {
             let qrCodeHandler = client.newGrantLoginWithQrCodeHandler()
+            // TODO: it would be nice to be able to cancel the grant at the SDK level if the user hits the cancel button
             try await qrCodeHandler.scan(qrCodeData: qrData, progressListener: listener)
             return .success(())
         } catch let error as HumanQrLoginError {
@@ -941,7 +942,31 @@ class ClientProxy: ClientProxyProtocol {
             return .failure(.qrCodeError(.unknown))
         }
     }
-    
+
+    private let qrGrantLoginByGeneratingQRCodeProgressSubject = PassthroughSubject<GrantGeneratedQrLoginProgress, Never>()
+    var qrGrantLoginByGeneratingQRCodeProgressPublisher: AnyPublisher<GrantGeneratedQrLoginProgress, Never> {
+        qrGrantLoginByGeneratingQRCodeProgressSubject.eraseToAnyPublisher()
+    }
+
+    func grantLoginByGeneratingQRCode() async -> Result<Void, AuthenticationServiceError> {
+        let listener = SDKListener { [weak self] progress in
+            self?.qrGrantLoginByGeneratingQRCodeProgressSubject.send(progress)
+        }
+        
+        do {
+            let qrCodeHandler = client.newGrantLoginWithQrCodeHandler()
+            // TODO: we need a way to cancel the in progress grant if the user hit the cancel button
+            try await qrCodeHandler.generate(progressListener: listener)
+            return .success(())
+        } catch let error as HumanQrLoginError {
+            MXLog.error("QRCode reciprocate error: \(error)")
+            return .failure(error.serviceError)
+        } catch {
+            MXLog.error("QRCode reciprocate unknown error: \(error)")
+            return .failure(.qrCodeError(.unknown))
+        }
+    }
+
     // MARK: - Private
     
     private func cacheAccountURL() async {

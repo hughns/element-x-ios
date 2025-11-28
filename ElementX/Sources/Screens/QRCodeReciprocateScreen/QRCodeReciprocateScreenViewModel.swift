@@ -21,6 +21,7 @@ class QRCodeReciprocateScreenViewModel: QRCodeReciprocateScreenViewModelType, QR
     }
     
     private var scanTask: Task<Void, Never>?
+    private var showTask: Task<Void, Never>?
 
     init(clientProxy: ClientProxyProtocol,
          appMediator: AppMediatorProtocol) {
@@ -36,8 +37,16 @@ class QRCodeReciprocateScreenViewModel: QRCodeReciprocateScreenViewModelType, QR
         switch viewAction {
         case .cancel:
             actionsSubject.send(.cancel)
+        case .startDesktop:
+            state.state = .scanInstructions
+        case .startMobile:
+            Task { await startShowQrIfPossible() }
         case .startScan:
             Task { await startScanIfPossible() }
+        case .startOver:
+            state.state = .initial
+        case .checkCodeInput:
+            Task { await checkCodeInput() }
         case .openSettings:
             appMediator.openAppSettings()
         }
@@ -45,6 +54,8 @@ class QRCodeReciprocateScreenViewModel: QRCodeReciprocateScreenViewModelType, QR
     
     // MARK: - Private
     
+    // TODO: when user cancels in UI then the underlying login needs to be cancelled too. It's unclear if we have that exposed in the bindings yet.
+
     private func setupSubscriptions() {
         context.$viewState
             // not using compactMap before remove duplicates because if there is an error, and the same code needs to be rescanned the transition to nil to clean the state would get ignored.
@@ -58,7 +69,7 @@ class QRCodeReciprocateScreenViewModel: QRCodeReciprocateScreenViewModelType, QR
             }
             .store(in: &cancellables)
         
-        clientProxy.qrReciprocateProgressPublisher
+        clientProxy.qrGrantLoginWithScannedQRCodeProgressPublisher
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] progress in
@@ -86,13 +97,87 @@ class QRCodeReciprocateScreenViewModel: QRCodeReciprocateScreenViewModelType, QR
                 }
             }
             .store(in: &cancellables)
+        
+        clientProxy.qrGrantLoginByGeneratingQRCodeProgressPublisher
+            // .removeDuplicates() FIXME: not Equatable
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] progress in
+                MXLog.info("QR Login Progress changed to: \(progress)")
+
+                guard let self,
+                      // Let's not advance the state if the current state is already invalid
+                      !state.state.isError else {
+                    return
+                }
+                
+                switch progress {
+                case .qrReady(let qrCodeData):
+                    state.state = .displayQr(qrCodeData.toBytes())
+                case .qrScanned(let checkCodeSender):
+                    state.state = .checkCode(checkCodeSender)
+                case .waitingForAuth(let verificationUri):
+                    // verificationUri is a String; ASWebAuthenticationSession requires a URL.
+                    guard let url = URL(string: verificationUri) else {
+                        MXLog.error("Invalid verification URI: \(verificationUri)")
+                        state.state = .error(.unknown)
+                        return
+                    }
+                    actionsSubject.send(.waitingForAuth(url))
+                default:
+                    break
+                }
+            }
+            .store(in: &cancellables)
     }
-    
+
+    private func startShowQrIfPossible() async {
+        state.bindings.qrResult = nil
+
+        // should have a connecting state
+        //        state.state = .connecintg
+        
+        showTask = Task { [weak self] in
+            guard let self else {
+                return
+            }
+            
+            defer {
+                showTask = nil
+            }
+            
+            MXLog.info("Generating QR code")
+            switch await clientProxy.grantLoginByGeneratingQRCode() {
+            case .success:
+                MXLog.info("QR Reciprocate completed")
+                actionsSubject.send(.done)
+            case .failure(let error):
+                if case .qrCodeError(let qrError) = error {
+                    handleError(qrError)
+                } else {
+                    handleError(.unknown)
+                }
+            }
+        }
+    }
+
     private func startScanIfPossible() async {
         state.bindings.qrResult = nil
         state.state = await appMediator.requestAuthorizationIfNeeded() ? .scan(.scanning) : .error(.noCameraPermission)
     }
-    
+
+    private func checkCodeInput() async {
+        if case let .checkCode(checkCodeSender) = state.state {
+            let stringValue = state.bindings.checkCodeInput
+            let code = UInt8(stringValue) ?? 0
+            do {
+                try await checkCodeSender.send(code: code)
+            } catch {
+                MXLog.error("Failed to send check code: \(error)")
+                handleError(.unknown)
+            }
+        }
+    }
+
     private func handleScan(qrData: Data) {
         guard scanTask == nil else {
             return
@@ -110,7 +195,7 @@ class QRCodeReciprocateScreenViewModel: QRCodeReciprocateScreenViewModelType, QR
             }
             
             MXLog.info("Scanning QR code: \(qrData)")
-            switch await clientProxy.reciprocateWithQRCode(data: qrData) {
+            switch await clientProxy.grantLoginWithScannedQRCode(scannedQRData: qrData) {
             case .success:
                 MXLog.info("QR Reciprocate completed")
                 actionsSubject.send(.done)

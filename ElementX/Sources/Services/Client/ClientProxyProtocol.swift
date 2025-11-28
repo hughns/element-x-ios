@@ -245,6 +245,9 @@ protocol ClientProxyProtocol: AnyObject {
     
     // MARK: - QR
 
-    var qrReciprocateProgressPublisher: AnyPublisher<GrantQrLoginProgress, Never> { get }
-    func reciprocateWithQRCode(data: Data) async -> Result<Void, AuthenticationServiceError>
+    var qrGrantLoginWithScannedQRCodeProgressPublisher: AnyPublisher<GrantQrLoginProgress, Never> { get }
+    func grantLoginWithScannedQRCode(scannedQRData: Data) async -> Result<Void, AuthenticationServiceError>
+
+    var qrGrantLoginByGeneratingQRCodeProgressPublisher: AnyPublisher<GrantGeneratedQrLoginProgress, Never> { get }
+    func grantLoginByGeneratingQRCode() async -> Result<Void, AuthenticationServiceError>
 }

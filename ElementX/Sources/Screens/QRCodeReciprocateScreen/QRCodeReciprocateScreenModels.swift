@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import MatrixRustSDK
 
 enum QRCodeReciprocateScreenViewModelAction {
     case cancel
@@ -38,24 +39,35 @@ struct QRCodeReciprocateScreenViewState: BindableState {
         AttributedString(L10n.screenQrCodeLoginConnectionNoteSecureStateListItem3)
     ]
     
-    var bindings = QRCodeReciprocateScreenViewStateBindings()
+    var bindings = QRCodeReciprocateScreenViewStateBindings(checkCodeInput: "")
 }
 
 struct QRCodeReciprocateScreenViewStateBindings {
     var qrResult: Data?
+    var checkCodeInput: String
 }
 
 enum QRCodeReciprocateScreenViewAction {
     case cancel
+    case startDesktop
+    case startMobile
     case startScan
+    case startOver
+    case checkCodeInput
     case openSettings
 }
 
-enum QRCodeReciprocateState: Equatable {
-    /// Initial state where the user is informed how to perform the scan
+enum QRCodeReciprocateState {
+    /// Initial state where user gets to choose whether to scan or show QR
     case initial
+    /// Instructions where the user is informed how to perform the scan
+    case scanInstructions
     /// The camera is scanning
     case scan(QRCodeReciprocateScanningState)
+    /// The QR code is being shown
+    case displayQr(Data)
+    /// The user needs to enter the two digit code to confirm the channel is secure
+    case checkCode(CheckCodeSenderProtocol)
     /// Codes are being shown
     case displayCode(QRCodeReciprocateDisplayCodeState)
     /// Any full screen error state
@@ -136,7 +148,7 @@ enum QRCodeReciprocateState: Equatable {
     
     var shouldDisplayCancelButton: Bool {
         switch self {
-        case .initial, .scan, .error(.noCameraPermission): true
+        case .initial, .scanInstructions, .displayQr, .checkCode, .scan, .error(.noCameraPermission): true
         default: false
         }
     }

@@ -2194,13 +2194,23 @@ class CXProviderMock: CXProviderProtocol, @unchecked Sendable {
     }
 }
 class ClientProxyMock: ClientProxyProtocol, @unchecked Sendable {
-    var qrReciprocateProgressPublisher: AnyPublisher<MatrixRustSDK.GrantQrLoginProgress, Never> {
-        get { return underlyingQrReciprocateProgressPublisher }
-        set(value) { underlyingQrReciprocateProgressPublisher = value }
+    var qrGrantLoginWithScannedQRCodeProgressPublisher: AnyPublisher<MatrixRustSDK.GrantQrLoginProgress, Never> {
+        get { return underlyingQrGrantLoginWithScannedQRCodeProgressPublisher }
+        set(value) { underlyingQrGrantLoginWithScannedQRCodeProgressPublisher = value }
     }
-    var underlyingQrReciprocateProgressPublisher: AnyPublisher<MatrixRustSDK.GrantQrLoginProgress, Never>!
+    var underlyingQrGrantLoginWithScannedQRCodeProgressPublisher: AnyPublisher<MatrixRustSDK.GrantQrLoginProgress, Never>!
 
-    func reciprocateWithQRCode(data: Data) async -> Result<Void, AuthenticationServiceError> {
+    func grantLoginWithScannedQRCode(scannedQRData data: Data) async -> Result<Void, AuthenticationServiceError> {
+        .success(())
+    }
+    
+    var qrGrantLoginByGeneratingQRCodeProgressPublisher: AnyPublisher<MatrixRustSDK.GrantGeneratedQrLoginProgress, Never> {
+        get { return underlyingQrGrantLoginByGeneratingQRCodeProgressPublisher }
+        set(value) { underlyingQrGrantLoginByGeneratingQRCodeProgressPublisher = value }
+    }
+    var underlyingQrGrantLoginByGeneratingQRCodeProgressPublisher: AnyPublisher<MatrixRustSDK.GrantGeneratedQrLoginProgress, Never>!
+
+    func grantLoginByGeneratingQRCode() async -> Result<Void, AuthenticationServiceError> {
         .success(())
     }
     

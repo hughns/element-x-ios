@@ -7,11 +7,14 @@
 //
 
 import Compound
+import CoreImage.CIFilterBuiltins
+import MatrixRustSDK
 import SwiftUI
 
 struct QRCodeReciprocateScreen: View {
     @ObservedObject var context: QRCodeReciprocateScreenViewModel.Context
     @State private var qrFrame = CGRect.zero
+    @FocusState private var checkCodeInputFocus
     
     var body: some View {
         NavigationStack {
@@ -29,8 +32,14 @@ struct QRCodeReciprocateScreen: View {
         switch context.viewState.state {
         case .initial:
             initialContent
+        case .scanInstructions:
+            scanInstructionsContent
         case .scan:
             qrScanContent
+        case .displayQr:
+            qrShowContent
+        case .checkCode:
+            checkCodeContent
         case .displayCode:
             displayCodeContent
         case .error:
@@ -39,6 +48,33 @@ struct QRCodeReciprocateScreen: View {
     }
     
     private var initialContent: some View {
+        FullscreenDialog {
+            VStack(alignment: .leading, spacing: 40) {
+                VStack(spacing: 16) {
+                    BigIcon(icon: \.computer, style: .default)
+                    
+                    VStack(spacing: 8) {
+                        Text("What kind of device do you want to link?")
+                            .foregroundColor(.compound.textPrimary)
+                            .font(.compound.headingMDBold)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+                .padding(.horizontal, 24)
+            }
+        } bottomContent: {
+            Button("Mobile device") {
+                context.send(viewAction: .startMobile)
+            }
+            .buttonStyle(.compound(.primary))
+            Button("Desktop computer") {
+                context.send(viewAction: .startDesktop)
+            }
+            .buttonStyle(.compound(.primary))
+        }
+    }
+
+    private var scanInstructionsContent: some View {
         FullscreenDialog {
             VStack(alignment: .leading, spacing: 40) {
                 VStack(spacing: 16) {
@@ -97,7 +133,94 @@ struct QRCodeReciprocateScreen: View {
             .padding(.horizontal, 24)
         }
     }
+
+    @ViewBuilder
+    private var checkCodeContent: some View {
+        FullscreenDialog {
+            VStack(alignment: .leading, spacing: 40) {
+                VStack(spacing: 16) {
+                    BigIcon(icon: \.computer, style: .default)
+                    
+                    VStack(spacing: 8) {
+                        Text("Enter the number shown on your other device")
+                            .foregroundColor(.compound.textPrimary)
+                            .font(.compound.headingMDBold)
+                            .multilineTextAlignment(.center)
+                        
+                        Text("This will verify that the connection to your other device is secure")
+                            .font(.compound.bodyMD)
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(.compound.textSecondary)
+                    }
+
+                    VStack(spacing: 40) {
+                        Text("Enter 2-digit code").font(.compound.bodyMD)
+
+                        PINTextField(pinCode: $context.checkCodeInput, maxLength: 2,
+                                     size: .medium)
+                            .focused($checkCodeInputFocus)
+                    }
+                }
+                .padding(.horizontal, 24)
+            }
+        } bottomContent: {
+            Button(L10n.actionContinue) {
+                context.send(viewAction: .checkCodeInput)
+            }
+            .buttonStyle(.compound(.primary))
+            .disabled(context.checkCodeInput.count < 2)
+        }
+        .padding(.horizontal, 24)
+        .onAppear { checkCodeInputFocus = true }
+    }
+
+    func generateQRCode(from data: Data) -> UIImage {
+        let qrContext = CIContext()
+        let qrFilter = CIFilter.qrCodeGenerator()
+        
+        qrFilter.message = data
+        qrFilter.correctionLevel = "Q"
+
+        if let outputImage = qrFilter.outputImage {
+            if let cgImage = qrContext.createCGImage(outputImage, from: outputImage.extent) {
+                return UIImage(cgImage: cgImage)
+            }
+        }
+
+        return UIImage(systemName: "xmark.circle") ?? UIImage()
+    }
     
+    @ViewBuilder
+    private var qrShowContent: some View {
+        if case let .displayQr(qrCodeData) = context.viewState.state {
+            FullscreenDialog {
+                VStack(spacing: 16) {
+                    BigIcon(icon: \.takePhotoSolid, style: .default)
+                        
+                    VStack(spacing: 8) {
+                        Text("Open Element on the other device")
+                            .foregroundColor(.compound.textPrimary)
+                            .font(.compound.headingMDBold)
+                            .multilineTextAlignment(.center)
+                    }
+                        
+                    Image(uiImage: generateQRCode(from: qrCodeData))
+                        .interpolation(.none) // to stop it getting blurred
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 200, height: 200)
+                }
+                .padding(.horizontal, 24)
+                    
+                SFNumberedListView(items: [
+                    "Open Element on the other device",
+                    "Select \"Sign in with QR Code\"",
+                    "Scan the QR code shown here with the other device"
+                ])
+            } bottomContent: { }.padding(.horizontal, 24)
+        }
+    }
+
     private func displayCodeHeader(state: QRCodeReciprocateState.QRCodeReciprocateDisplayCodeState) -> some View {
         VStack(spacing: 16) {
             switch state {
@@ -345,12 +468,12 @@ struct QRCodeReciprocateScreen: View {
             .buttonStyle(.compound(.primary))
         case .connectionNotSecure, .unknown, .expired, .declined, .deviceNotSupported:
             Button(L10n.screenQrCodeLoginStartOverButton) {
-                context.send(viewAction: .startScan)
+                context.send(viewAction: .startOver)
             }
             .buttonStyle(.compound(.primary))
         case .cancelled:
             Button(L10n.actionTryAgain) {
-                context.send(viewAction: .startScan)
+                context.send(viewAction: .startOver)
             }
             .buttonStyle(.compound(.primary))
         case .linkingNotSupported:

@@ -108,6 +108,14 @@ struct SettingsScreen: View {
     
     private var manageAccountSection: some View {
         Section {
+            // TODO: check for availability of this?
+            if let url = context.viewState.accountSessionsListURL {
+                ListRow(label: .default(title: "Link new device",
+                                        icon: \.qrCode),
+                        kind: .navigationLink {
+                            context.send(viewAction: .linkNewDevice)
+                        })
+            }
             if let url = context.viewState.accountProfileURL {
                 ListRow(label: .default(title: L10n.actionManageAccount,
                                         icon: \.userProfile),
@@ -122,14 +130,6 @@ struct SettingsScreen: View {
                                         icon: \.devices),
                         kind: .button {
                             context.send(viewAction: .manageAccount(url: url))
-                        })
-            }
-
-            if let url = context.viewState.accountSessionsListURL {
-                ListRow(label: .default(title: "Link new device",
-                                        icon: \.qrCode),
-                        kind: .button {
-                            context.send(viewAction: .linkNewDevice)
                         })
             }
 
