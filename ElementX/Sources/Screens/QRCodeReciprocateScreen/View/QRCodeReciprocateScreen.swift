@@ -40,6 +40,8 @@ struct QRCodeReciprocateScreen: View {
             qrShowContent
         case .checkCode:
             checkCodeContent
+        case .checkCodeInvalid:
+            checkCodeContent
         case .displayCode:
             displayCodeContent
         case .error:
@@ -159,7 +161,17 @@ struct QRCodeReciprocateScreen: View {
                         PINTextField(pinCode: $context.checkCodeInput, maxLength: 2,
                                      size: .medium)
                             .focused($checkCodeInputFocus)
-                    }
+                        
+                        if case .checkCodeInvalid = context.viewState.state {
+                            Label("The numbers don't match",
+                                  icon: \.errorSolid,
+                                  iconSize: .medium,
+                                  relativeTo: .compound.bodyMDSemibold)
+                                .labelStyle(.custom(spacing: 10))
+                                .font(.compound.bodyMDSemibold)
+                                .foregroundColor(.compound.textCriticalPrimary)
+                        }
+                     }
                 }
                 .padding(.horizontal, 24)
             }

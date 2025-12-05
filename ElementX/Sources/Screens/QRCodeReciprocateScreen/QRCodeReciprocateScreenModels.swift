@@ -68,6 +68,8 @@ enum QRCodeReciprocateState {
     case displayQr(Data)
     /// The user needs to enter the two digit code to confirm the channel is secure
     case checkCode(CheckCodeSenderProtocol)
+    /// The user needs to enter the two digit code to confirm the channel is secure
+    case checkCodeInvalid(CheckCodeSenderProtocol)
     /// Codes are being shown
     case displayCode(QRCodeReciprocateDisplayCodeState)
     /// Any full screen error state
@@ -150,6 +152,14 @@ enum QRCodeReciprocateState {
         switch self {
         case .initial, .scanInstructions, .displayQr, .checkCode, .scan, .error(.noCameraPermission): true
         default: false
+        }
+    }
+    
+    var checkCodeSender: CheckCodeSenderProtocol? {
+        switch self {
+        case .checkCode(let sender): return sender
+        case .checkCodeInvalid(let sender): return sender
+        default: return nil
         }
     }
 }

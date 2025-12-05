@@ -66,6 +66,77 @@ open class CheckCodeSenderSDKMock: MatrixRustSDK.CheckCodeSender, @unchecked Sen
         }
         try await sendCodeClosure?(code)
     }
+
+    //MARK: - validate
+
+    var validateCheckCodeUnderlyingCallsCount = 0
+    open var validateCheckCodeCallsCount: Int {
+        get {
+            if Thread.isMainThread {
+                return validateCheckCodeUnderlyingCallsCount
+            } else {
+                var returnValue: Int? = nil
+                DispatchQueue.main.sync {
+                    returnValue = validateCheckCodeUnderlyingCallsCount
+                }
+
+                return returnValue!
+            }
+        }
+        set {
+            if Thread.isMainThread {
+                validateCheckCodeUnderlyingCallsCount = newValue
+            } else {
+                DispatchQueue.main.sync {
+                    validateCheckCodeUnderlyingCallsCount = newValue
+                }
+            }
+        }
+    }
+    open var validateCheckCodeCalled: Bool {
+        return validateCheckCodeCallsCount > 0
+    }
+    open var validateCheckCodeReceivedCheckCode: UInt8?
+    open var validateCheckCodeReceivedInvocations: [UInt8] = []
+
+    var validateCheckCodeUnderlyingReturnValue: Bool!
+    open var validateCheckCodeReturnValue: Bool! {
+        get {
+            if Thread.isMainThread {
+                return validateCheckCodeUnderlyingReturnValue
+            } else {
+                var returnValue: Bool? = nil
+                DispatchQueue.main.sync {
+                    returnValue = validateCheckCodeUnderlyingReturnValue
+                }
+
+                return returnValue!
+            }
+        }
+        set {
+            if Thread.isMainThread {
+                validateCheckCodeUnderlyingReturnValue = newValue
+            } else {
+                DispatchQueue.main.sync {
+                    validateCheckCodeUnderlyingReturnValue = newValue
+                }
+            }
+        }
+    }
+    open var validateCheckCodeClosure: ((UInt8) -> Bool)?
+
+    open override func validate(checkCode: UInt8) -> Bool {
+        validateCheckCodeCallsCount += 1
+        validateCheckCodeReceivedCheckCode = checkCode
+        DispatchQueue.main.async {
+            self.validateCheckCodeReceivedInvocations.append(checkCode)
+        }
+        if let validateCheckCodeClosure = validateCheckCodeClosure {
+            return validateCheckCodeClosure(checkCode)
+        } else {
+            return validateCheckCodeReturnValue
+        }
+    }
 }
 open class ClientSDKMock: MatrixRustSDK.Client, @unchecked Sendable {
     init() {

@@ -166,9 +166,17 @@ class QRCodeReciprocateScreenViewModel: QRCodeReciprocateScreenViewModelType, QR
     }
 
     private func checkCodeInput() async {
-        if case let .checkCode(checkCodeSender) = state.state {
+        if let checkCodeSender = state.state.checkCodeSender {
             let stringValue = state.bindings.checkCodeInput
             let code = UInt8(stringValue) ?? 0
+            // we call validate first. if incorrect then we show UI feedback
+            if !checkCodeSender.validate(checkCode: code) {
+                state.state = .checkCodeInvalid(checkCodeSender)
+                return
+            }
+            // code is valid so update UI
+            state.state = .checkCode(checkCodeSender)
+            // we only send if validated above
             do {
                 try await checkCodeSender.send(code: code)
             } catch {
