@@ -934,7 +934,7 @@ class ClientProxy: ClientProxyProtocol {
             // TODO: it would be nice to be able to cancel the grant at the SDK level if the user hits the cancel button
             try await qrCodeHandler.scan(qrCodeData: qrData, progressListener: listener)
             return .success(())
-        } catch let error as HumanQrLoginError {
+        } catch let error as HumanQrGrantLoginError {
             MXLog.error("QRCode reciprocate error: \(error)")
             return .failure(error.serviceError)
         } catch {
@@ -958,7 +958,7 @@ class ClientProxy: ClientProxyProtocol {
             // TODO: we need a way to cancel the in progress grant if the user hit the cancel button
             try await qrCodeHandler.generate(progressListener: listener)
             return .success(())
-        } catch let error as HumanQrLoginError {
+        } catch let error as HumanQrGrantLoginError {
             MXLog.error("QRCode reciprocate error: \(error)")
             return .failure(error.serviceError)
         } catch {

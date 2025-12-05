@@ -257,6 +257,19 @@ extension HumanQrLoginError {
     }
 }
 
+extension HumanQrGrantLoginError {
+    var serviceError: AuthenticationServiceError {
+        switch self {
+        case .InvalidCheckCode(message: let message):
+            .qrCodeError(.connectionInsecure)
+        case .UnsupportedProtocol(message: let message):
+            .qrCodeError(.linkingNotSupported)
+        case .Unknown, .MissingSecretsBackup, .DeviceIdAlreadyInUse, .UnableToCreateDevice:
+            .qrCodeError(.unknown)
+        }
+    }
+}
+
 // MARK: - Mocks
 
 extension AuthenticationService {
